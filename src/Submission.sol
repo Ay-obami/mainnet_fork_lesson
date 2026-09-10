@@ -1,8 +1,7 @@
 // Repository: <FILL_IN_YOUR_REPO_URL_HERE>
 // Commit: <FILL_IN_YOUR_COMMIT_SHA_HERE>
 //
-// Flattened single-file submission. No imports are used or required;
-// everything the grader needs to compile and deploy `Submission` is below.
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
