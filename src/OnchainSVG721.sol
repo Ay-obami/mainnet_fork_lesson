@@ -8,29 +8,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-/// @notice Small, self-contained Base64 encoder used for fully onchain metadata.
 library Base64 {
     bytes internal constant TABLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
     function encode(bytes memory data) internal pure returns (string memory) {
         if (data.length == 0) return "";
-
         uint256 encodedLength = 4 * ((data.length + 2) / 3);
         bytes memory result = new bytes(encodedLength);
         uint256 j;
-
         for (uint256 i; i < data.length; i += 3) {
             uint256 a = uint8(data[i]);
             uint256 b = i + 1 < data.length ? uint8(data[i + 1]) : 0;
             uint256 c = i + 2 < data.length ? uint8(data[i + 2]) : 0;
             uint256 packed = (a << 16) | (b << 8) | c;
-
             result[j++] = TABLE[(packed >> 18) & 0x3f];
             result[j++] = TABLE[(packed >> 12) & 0x3f];
             result[j++] = i + 1 < data.length ? TABLE[(packed >> 6) & 0x3f] : bytes1("=");
             result[j++] = i + 2 < data.length ? TABLE[packed & 0x3f] : bytes1("=");
         }
-
         return string(result);
     }
 }
@@ -43,7 +38,6 @@ interface IERC721 is IERC165 {
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
     event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
-
     function balanceOf(address owner) external view returns (uint256 balance);
     function ownerOf(uint256 tokenId) external view returns (address owner);
     function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external;
@@ -67,10 +61,6 @@ interface IERC721Receiver {
         returns (bytes4);
 }
 
-/// @title Fully Onchain SVG ERC-721
-/// @notice Stores SVG and JSON metadata inside deployed EVM bytecode contracts.
-/// @dev The storage design mirrors the TimidanOnchain approach: file bytes become runtime
-///      bytecode of tiny data contracts and are reconstructed with EXTCODECOPY.
 contract OnchainSVG721 is IERC721Metadata {
     using Base64 for bytes;
 
@@ -93,7 +83,6 @@ contract OnchainSVG721 is IERC721Metadata {
 
     address public immutable contractOwner;
     bool public minted;
-
     mapping(bytes32 => StoredFile) private _files;
     mapping(uint256 => address) private _owners;
     mapping(address => uint256) private _balances;
@@ -155,10 +144,8 @@ contract OnchainSVG721 is IERC721Metadata {
 
     function transferFrom(address from, address to, uint256 tokenId) public override {
         if (to == address(0)) revert ZeroAddress();
-
         address tokenOwner = ownerOf(tokenId);
         if (tokenOwner != from || !_isAuthorized(msg.sender, tokenId, tokenOwner)) revert NotAuthorized();
-
         delete _tokenApprovals[tokenId];
         unchecked {
             _balances[from]--;
@@ -174,7 +161,6 @@ contract OnchainSVG721 is IERC721Metadata {
 
     function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public override {
         transferFrom(from, to, tokenId);
-
         if (to.code.length != 0) {
             try IERC721Receiver(to).onERC721Received(msg.sender, from, tokenId, data) returns (bytes4 selector) {
                 if (selector != IERC721Receiver.onERC721Received.selector) revert InvalidReceiver();
@@ -184,42 +170,27 @@ contract OnchainSVG721 is IERC721Metadata {
         }
     }
 
-    /// @notice Stores an arbitrary file by deploying its bytes as runtime bytecode.
     function saveFile(string calldata key, bytes calldata data) external onlyOwner {
         if (data.length == 0) revert EmptyData();
         if (data.length > 24_000) revert PageTooLarge();
-
         bytes32 fileKey = keccak256(bytes(key));
         if (_files[fileKey].exists) revert FileAlreadyExists();
-
         bytes memory payload = data;
         uint16 payloadSize = uint16(payload.length);
-
-        // 14-byte init code:
-        // PUSH2 size | PUSH1 0x0e | PUSH1 0 | CODECOPY | PUSH2 size | PUSH1 0 | RETURN
         bytes memory creationCode = abi.encodePacked(
-            hex"61",
-            bytes2(payloadSize),
-            hex"600e60003961",
-            bytes2(payloadSize),
-            hex"6000f3",
-            payload
+            hex"61", bytes2(payloadSize), hex"600e60003961", bytes2(payloadSize), hex"6000f3", payload
         );
-
         address pointer;
         assembly {
             pointer := create(0, add(creationCode, 0x20), mload(creationCode))
         }
         if (pointer == address(0)) revert DataDeploymentFailed();
-
         _files[fileKey] = StoredFile({pointer: pointer, size: uint32(payload.length), exists: true});
     }
 
-    /// @notice Reconstructs a stored file directly from the runtime bytecode of its data contract.
     function getFile(string memory key) public view returns (bytes memory output) {
         StoredFile memory file = _files[keccak256(bytes(key))];
         if (!file.exists) revert FileMissing();
-
         output = new bytes(file.size);
         address pointer = file.pointer;
         uint256 size = file.size;
@@ -234,13 +205,11 @@ contract OnchainSVG721 is IERC721Metadata {
         return (file.pointer, file.size);
     }
 
-    /// @notice Mints token #0 after both image.svg and metadata.json have been uploaded.
     function mint(address to) external onlyOwner returns (uint256 tokenId) {
         if (minted) revert AlreadyMinted();
         if (to == address(0)) revert ZeroAddress();
         if (!_files[keccak256(bytes("image.svg"))].exists) revert FileMissing();
         if (!_files[keccak256(bytes("metadata.json"))].exists) revert FileMissing();
-
         minted = true;
         tokenId = 0;
         _owners[tokenId] = to;
@@ -248,7 +217,6 @@ contract OnchainSVG721 is IERC721Metadata {
         emit Transfer(address(0), to, tokenId);
     }
 
-    /// @notice Returns JSON metadata as an onchain data URI. No HTTP or IPFS is used.
     function tokenURI(uint256 tokenId) external view override returns (string memory) {
         ownerOf(tokenId);
         return string.concat("data:application/json;base64,", getFile("metadata.json").encode());
@@ -263,7 +231,6 @@ contract OnchainSVG721 is IERC721Metadata {
     }
 
     function _isAuthorized(address spender, uint256 tokenId, address tokenOwner) internal view returns (bool) {
-        return spender == tokenOwner || _tokenApprovals[tokenId] == spender
-            || _operatorApprovals[tokenOwner][spender];
+        return spender == tokenOwner || _tokenApprovals[tokenId] == spender || _operatorApprovals[tokenOwner][spender];
     }
 }
