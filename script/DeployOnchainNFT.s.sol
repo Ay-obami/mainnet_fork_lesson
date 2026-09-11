@@ -16,7 +16,7 @@ contract DeployOnchainNFT is Script {
             '<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">',
             '<stop offset="0%" stop-color="#111827"/>',
             '<stop offset="100%" stop-color="#312e81"/>',
-            '</linearGradient></defs>',
+            "</linearGradient></defs>",
             '<rect width="600" height="600" rx="48" fill="url(#bg)"/>',
             '<circle cx="300" cy="245" r="135" fill="none" stroke="#22d3ee" stroke-width="18"/>',
             '<circle cx="300" cy="245" r="94" fill="#0f172a" stroke="#a78bfa" stroke-width="10"/>',
@@ -24,7 +24,7 @@ contract DeployOnchainNFT is Script {
             '<circle cx="300" cy="245" r="24" fill="#f8fafc"/>',
             '<text x="300" y="445" text-anchor="middle" font-family="monospace" font-size="42" font-weight="bold" fill="#f8fafc">ONCHAIN</text>',
             '<text x="300" y="493" text-anchor="middle" font-family="monospace" font-size="22" fill="#67e8f9">ERC-721 #0</text>',
-            '</svg>'
+            "</svg>"
         );
 
         string memory imageURI = string.concat("data:image/svg+xml;base64,", bytes(svg).encode());
@@ -38,16 +38,14 @@ contract DeployOnchainNFT is Script {
             '{"trait_type":"Storage","value":"Fully Onchain"},',
             '{"trait_type":"Image Format","value":"SVG"},',
             '{"trait_type":"Storage Method","value":"EVM Bytecode"}',
-            ']}'
+            "]}"
         );
 
         vm.startBroadcast(privateKey);
-
         OnchainSVG721 nft = new OnchainSVG721();
         nft.saveFile("image.svg", bytes(svg));
         nft.saveFile("metadata.json", bytes(metadata));
         nft.mint(deployer);
-
         vm.stopBroadcast();
 
         console2.log("NFT contract:", address(nft));
