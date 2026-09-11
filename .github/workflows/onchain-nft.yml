@@ -1,0 +1,38 @@
+name: Onchain NFT
+
+permissions: {}
+
+on:
+  push:
+    branches:
+      - onchain-nft-assignment
+  pull_request:
+    paths:
+      - "src/OnchainSVG721.sol"
+      - "script/DeployOnchainNFT.s.sol"
+      - "test/OnchainSVG721.t.sol"
+      - ".github/workflows/onchain-nft.yml"
+  workflow_dispatch:
+
+jobs:
+  nft:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Check assignment formatting
+        run: forge fmt --check src/OnchainSVG721.sol script/DeployOnchainNFT.s.sol test/OnchainSVG721.t.sol
+
+      - name: Build assignment contract and script
+        run: forge build src/OnchainSVG721.sol script/DeployOnchainNFT.s.sol
+
+      - name: Run assignment tests
+        run: forge test --match-contract OnchainSVG721Test -vvv
