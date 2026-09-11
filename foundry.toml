@@ -3,6 +3,10 @@ src = "src"
 out = "out"
 libs = ["lib"]
 
+fs_permissions = [
+    { access = "read", path = "./assets" }
+]
+
 # Free public archive endpoints occasionally drop requests (throttling /
 # timeouts). If a run fails with EVM/database errors, retry with:
 #   forge test --fork-retries 5 --fork-retry-backoff 1

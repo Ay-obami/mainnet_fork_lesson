@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Test}     from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {Submission} from "../src/Submission.sol";
@@ -11,9 +11,9 @@ import {Submission} from "../src/Submission.sol";
 // ---------------------------------------------------------------------------
 interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
-    function symbol()                   external view returns (string memory);
+    function symbol() external view returns (string memory);
     function allowance(address owner, address spender) external view returns (uint256);
-    function approve(address spender, uint256 amount)  external returns (bool);
+    function approve(address spender, uint256 amount) external returns (bool);
 }
 
 // ---------------------------------------------------------------------------
@@ -22,11 +22,11 @@ interface IERC20 {
 // when decoding the empty return buffer.
 // ---------------------------------------------------------------------------
 interface IUSDT {
-    function balanceOf(address account)                         external view returns (uint256);
-    function symbol()                                           external view returns (string memory);
-    function allowance(address owner, address spender)          external view returns (uint256);
-    function approve(address spender, uint256 amount)           external; // no return value
-    function transfer(address to, uint256 amount)               external; // no return value
+    function balanceOf(address account) external view returns (uint256);
+    function symbol() external view returns (string memory);
+    function allowance(address owner, address spender) external view returns (uint256);
+    function approve(address spender, uint256 amount) external; // no return value
+    function transfer(address to, uint256 amount) external; // no return value
     function transferFrom(address from, address to, uint256 amount) external; // no return value
 }
 
@@ -40,13 +40,13 @@ contract UniswapForkTest is Test {
     // -----------------------------------------------------------------------
     // Real mainnet addresses.
     // -----------------------------------------------------------------------
-    address constant USDT_ADDR   = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
-    address constant WETH_ADDR   = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address constant USDT_ADDR = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    address constant WETH_ADDR = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address constant ROUTER_ADDR = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-    address constant PAIR_ADDR   = 0x0d4a11d5EEaaC28EC3F61d100daF4d40471f1852;
+    address constant PAIR_ADDR = 0x0d4a11d5EEaaC28EC3F61d100daF4d40471f1852;
 
     Submission submission;
-    address    alice;
+    address alice;
 
     // -----------------------------------------------------------------------
     // setUp — runs before every test.
@@ -91,16 +91,16 @@ contract UniswapForkTest is Test {
 
     /// @notice Happy path: 100 USDT → WETH lands in bob's wallet.
     function test_swapUsdtForWeth_happyPath() public {
-        address bob        = makeAddr("bob");
-        uint256 amountIn   = 100e6; // 100 USDT
+        address bob = makeAddr("bob");
+        uint256 amountIn = 100e6; // 100 USDT
 
         uint256 aliceUsdtBefore = IUSDT(USDT_ADDR).balanceOf(alice);
-        uint256 bobWethBefore   = IERC20(WETH_ADDR).balanceOf(bob);
+        uint256 bobWethBefore = IERC20(WETH_ADDR).balanceOf(bob);
 
         vm.prank(alice);
         uint256 amountOut = submission.swapUsdtForWeth(
             amountIn,
-            0,   // amountOutMin — accept any (slippage not the focus here)
+            0, // amountOutMin — accept any (slippage not the focus here)
             bob,
             _deadline()
         );
@@ -112,16 +112,8 @@ contract UniswapForkTest is Test {
             aliceUsdtBefore - amountIn,
             "alice USDT balance should decrease by amountIn"
         );
-        assertGt(
-            IERC20(WETH_ADDR).balanceOf(bob),
-            bobWethBefore,
-            "bob WETH balance should increase"
-        );
-        assertEq(
-            IERC20(WETH_ADDR).balanceOf(bob) - bobWethBefore,
-            amountOut,
-            "bob received exactly amountOut"
-        );
+        assertGt(IERC20(WETH_ADDR).balanceOf(bob), bobWethBefore, "bob WETH balance should increase");
+        assertEq(IERC20(WETH_ADDR).balanceOf(bob) - bobWethBefore, amountOut, "bob received exactly amountOut");
 
         // Router allowance must be zeroed after the swap.
         assertEq(
@@ -176,42 +168,29 @@ contract UniswapForkTest is Test {
         address lpRecipient = makeAddr("lpRecipient");
 
         uint256 usdtDesired = 1_000e6; // 1 000 USDT
-        uint256 wethDesired = 0.3e18;  // 0.3 WETH (slightly off-ratio → one side dusts)
+        uint256 wethDesired = 0.3e18; // 0.3 WETH (slightly off-ratio → one side dusts)
 
         uint256 aliceUsdtBefore = IUSDT(USDT_ADDR).balanceOf(alice);
         uint256 aliceWethBefore = IERC20(WETH_ADDR).balanceOf(alice);
-        uint256 pairBefore      = IERC20(PAIR_ADDR).balanceOf(lpRecipient);
+        uint256 pairBefore = IERC20(PAIR_ADDR).balanceOf(lpRecipient);
 
         vm.prank(alice);
-        (uint256 usdtUsed, uint256 wethUsed, uint256 liquidity) =
-            submission.addUsdtWethLiquidity(
-                usdtDesired,
-                wethDesired,
-                0,           // usdtMin
-                0,           // wethMin
-                lpRecipient,
-                _deadline()
-            );
+        (uint256 usdtUsed, uint256 wethUsed, uint256 liquidity) = submission.addUsdtWethLiquidity(
+            usdtDesired,
+            wethDesired,
+            0, // usdtMin
+            0, // wethMin
+            lpRecipient,
+            _deadline()
+        );
 
         // LP tokens minted to recipient.
         assertGt(liquidity, 0, "liquidity should be > 0");
-        assertEq(
-            IERC20(PAIR_ADDR).balanceOf(lpRecipient),
-            pairBefore + liquidity,
-            "lpRecipient LP balance mismatch"
-        );
+        assertEq(IERC20(PAIR_ADDR).balanceOf(lpRecipient), pairBefore + liquidity, "lpRecipient LP balance mismatch");
 
         // Alice charged exactly what was consumed (dust refunded).
-        assertEq(
-            IUSDT(USDT_ADDR).balanceOf(alice),
-            aliceUsdtBefore - usdtUsed,
-            "alice USDT balance mismatch"
-        );
-        assertEq(
-            IERC20(WETH_ADDR).balanceOf(alice),
-            aliceWethBefore - wethUsed,
-            "alice WETH balance mismatch"
-        );
+        assertEq(IUSDT(USDT_ADDR).balanceOf(alice), aliceUsdtBefore - usdtUsed, "alice USDT balance mismatch");
+        assertEq(IERC20(WETH_ADDR).balanceOf(alice), aliceWethBefore - wethUsed, "alice WETH balance mismatch");
 
         // Submission contract holds no leftover tokens.
         assertEq(IUSDT(USDT_ADDR).balanceOf(address(submission)), 0, "USDT dust left in contract");
@@ -229,10 +208,7 @@ contract UniswapForkTest is Test {
             "WETH allowance on router must be 0 after addLiquidity"
         );
 
-        console2.log(
-            "Liquidity added: usdtUsed=%d wethUsed=%d liquidity=%d",
-            usdtUsed, wethUsed, liquidity
-        );
+        console2.log("Liquidity added: usdtUsed=%d wethUsed=%d liquidity=%d", usdtUsed, wethUsed, liquidity);
     }
 
     /// @notice Reverts when usdtDesired == 0.
