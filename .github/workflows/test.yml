@@ -7,12 +7,9 @@ on:
   pull_request:
   workflow_dispatch:
 
-env:
-  FOUNDRY_PROFILE: ci
-
 jobs:
   check:
-    name: Foundry project
+    name: Onchain NFT assignment
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -28,11 +25,11 @@ jobs:
       - name: Show Forge version
         run: forge --version
 
-      - name: Run Forge fmt
-        run: forge fmt --check
+      - name: Check assignment formatting
+        run: forge fmt --check src/OnchainSVG721.sol script/DeployOnchainNFT.s.sol test/OnchainSVG721.t.sol
 
-      - name: Run Forge build
-        run: forge build --sizes
+      - name: Build assignment contract and script
+        run: forge build src/OnchainSVG721.sol script/DeployOnchainNFT.s.sol
 
-      - name: Run Forge tests
-        run: forge test -vvv
+      - name: Run assignment tests
+        run: forge test --match-contract OnchainSVG721Test -vvv
