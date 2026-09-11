@@ -1,15 +1,21 @@
-name: CI
+name: Onchain NFT
 
 permissions: {}
 
 on:
   push:
+    branches:
+      - onchain-nft-assignment
   pull_request:
+    paths:
+      - "src/OnchainSVG721.sol"
+      - "script/DeployOnchainNFT.s.sol"
+      - "test/OnchainSVG721.t.sol"
+      - ".github/workflows/onchain-nft.yml"
   workflow_dispatch:
 
 jobs:
-  check:
-    name: Onchain NFT assignment
+  nft:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -21,9 +27,6 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
-
-      - name: Show Forge version
-        run: forge --version
 
       - name: Check assignment formatting
         run: forge fmt --check src/OnchainSVG721.sol script/DeployOnchainNFT.s.sol test/OnchainSVG721.t.sol
