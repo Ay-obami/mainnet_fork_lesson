@@ -10,24 +10,19 @@ contract OnchainSVG721Test is Test {
     OnchainSVG721 internal nft;
     address internal recipient = address(0xBEEF);
 
-    function setUp() public {
-        nft = new OnchainSVG721();
-    }
+    function setUp() public { nft = new OnchainSVG721(); }
 
     function testStoresFilesMintsAndReturnsDataURI() public {
         string memory svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>';
         string memory imageURI = string.concat("data:image/svg+xml;base64,", bytes(svg).encode());
         string memory metadata = string.concat('{"name":"Test #0","image":"', imageURI, '"}');
-
         nft.saveFile("image.svg", bytes(svg));
         nft.saveFile("metadata.json", bytes(metadata));
         nft.mint(recipient);
-
         assertEq(nft.ownerOf(0), recipient);
         assertEq(nft.balanceOf(recipient), 1);
         assertEq(nft.rawSVG(), svg);
         assertEq(nft.rawMetadata(), metadata);
-
         string memory expected = string.concat("data:application/json;base64,", bytes(metadata).encode());
         assertEq(nft.tokenURI(0), expected);
     }
@@ -35,12 +30,26 @@ contract OnchainSVG721Test is Test {
     function testFileStorageUsesSeparateBytecodeContract() public {
         bytes memory svg = bytes('<svg xmlns="http://www.w3.org/2000/svg"></svg>');
         nft.saveFile("image.svg", svg);
-
-        (address pointer, uint256 size) = nft.filePointer("image.svg");
+        assertEq(nft.filePageCount("image.svg"), 1);
+        (address pointer, uint256 size) = nft.filePointer("image.svg", 0);
         assertTrue(pointer.code.length > 0);
         assertEq(pointer.code.length, size);
         assertEq(size, svg.length);
         assertEq(nft.rawSVG(), string(svg));
+    }
+
+    function testLargeFileIsSplitAcrossPagesAndReassembled() public {
+        bytes memory data = new bytes(50_000);
+        for (uint256 i; i < data.length; i++) data[i] = bytes1(uint8(65 + (i % 26)));
+        nft.saveFile("image.svg", data);
+        assertEq(nft.filePageCount("image.svg"), 3);
+        (, uint256 first) = nft.filePointer("image.svg", 0);
+        (, uint256 second) = nft.filePointer("image.svg", 1);
+        (, uint256 third) = nft.filePointer("image.svg", 2);
+        assertEq(first, 23_500);
+        assertEq(second, 23_500);
+        assertEq(third, 3_000);
+        assertEq(nft.getFile("image.svg"), data);
     }
 
     function testMintRequiresBothFiles() public {
